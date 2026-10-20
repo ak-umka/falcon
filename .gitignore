@@ -58,3 +58,6 @@ next-env.d.ts
 
 # local secrets
 .dev.vars
+
+# python
+__pycache__/
