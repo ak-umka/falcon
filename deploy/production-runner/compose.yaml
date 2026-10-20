@@ -5,6 +5,8 @@ services:
     environment:
       STUDIO_URL: ${STUDIO_URL:?Set STUDIO_URL}
       PRODUCTION_RUNNER_TOKEN: ${PRODUCTION_RUNNER_TOKEN:?Set secret token}
+      PIXABAY_API_KEY: ${PIXABAY_API_KEY:-}
     read_only: true
+    tmpfs: [/tmp:size=1g]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
