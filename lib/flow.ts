@@ -1,7 +1,7 @@
 import type { Project } from "./news";
 import { scenePrompt } from "./backgrounds.ts";
 export function flowInstructions(project: Project, avatarName?: string, backgroundName?: string) {
-  const language = { ru: "Russian", en: "English", uz: "Uzbek" }[project.language];
+  const language = { ru: "Russian", en: "English", uz: "Uzbek", kk: "Kazakh" }[project.language];
   return [
     `PROJECT: ${project.title}`, `Create a news presenter video in ${project.ratio} aspect ratio.`,
     avatarName ? `PRESENTER: ${avatarName}. Use the attached portrait as the identity reference. Keep face, age, hairstyle and accessories consistent. One presenter, direct eye contact.` : "PRESENTER: Choose a presenter before production.",

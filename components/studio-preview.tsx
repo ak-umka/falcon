@@ -77,7 +77,7 @@ export default function StudioPreview({ project, avatar, videoSrc, videoChanged,
       const firstWord = Math.min(Math.floor(positionRef.current), words.length - 1);
       const startCharacter = words[firstWord].start;
       utterance = new SpeechSynthesisUtterance(project.script.slice(startCharacter));
-      utterance.lang = { ru: "ru-RU", en: "en-US", uz: "uz-UZ" }[project.language];
+      utterance.lang = { ru: "ru-RU", en: "en-US", uz: "uz-UZ", kk: "kk-KZ" }[project.language];
       utterance.rate = rate;
       utterance.onstart = () => { if (!cancelled) anchor = { word: firstWord, time: performance.now() }; };
       utterance.onboundary = event => {
