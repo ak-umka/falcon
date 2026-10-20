@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1791856398975,
+      "tag": "0000_lame_wolfpack",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791857169900,
+      "tag": "0001_amazing_rick_jones",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791857390121,
+      "tag": "0002_third_captain_universe",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791866514217,
+      "tag": "0003_tiny_big_bertha",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791866790012,
+      "tag": "0004_sharp_sentry",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791932460396,
+      "tag": "0005_optimal_liz_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791946747415,
+      "tag": "0006_icy_thanos",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `one_active_render` ON `jobs` (`owner_id`,`project_id`) WHERE "jobs"."status" IN ('submitting','pending','processing','unconfirmed');

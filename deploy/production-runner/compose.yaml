@@ -1,0 +1,10 @@
+services:
+  production-runner:
+    build: .
+    restart: unless-stopped
+    environment:
+      STUDIO_URL: ${STUDIO_URL:?Set STUDIO_URL}
+      PRODUCTION_RUNNER_TOKEN: ${PRODUCTION_RUNNER_TOKEN:?Set secret token}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]

@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { blankProject, projectSchema, publishSchema, publicationPayload, checkPublication, estimateSeconds, cleanScript } from '../lib/news.ts';
+const id='550e8400-e29b-41d4-a716-446655440000';
+const valid={projectId:id,requestKey:id,jobId:id,mediaId:null,channels:[{channelId:1,platform:'instagram'}],caption:'Проверенный выпуск',mode:'now',timezone:'America/New_York',privacy:'SELF_ONLY',reviewed:true,width:1080,height:1920,duration:30};
+test('empty draft is valid; record ownership fields cannot be injected',()=>{const p=projectSchema.parse({...blankProject(),ownerId:'another-user'});assert.equal(p.ownerId,undefined);assert.equal(p.ratio,'9:16')});
+test('a publication requires a single real video source',()=>{assert.equal(publishSchema.safeParse({...valid,jobId:null}).success,false);assert.equal(publishSchema.safeParse({...valid,mediaId:id}).success,false)});
+test('a post requires review and explicit channel',()=>{assert.equal(publishSchema.safeParse({...valid,reviewed:false}).success,false);assert.equal(publishSchema.safeParse({...valid,channels:[]}).success,false)});
+test('server rejects past schedules',()=>assert.equal(publishSchema.safeParse({...valid,mode:'schedule',scheduledAt:'2020-01-01T00:00:00.000Z'}).success,false));
+test('Instagram uses reel; TikTok has AI disclosure and explicit privacy',()=>{const p=publicationPayload(publishSchema.parse(valid),5);assert.equal(p.postTypeOverrides.instagram,'reel');assert.equal(p.platformSpecific.tiktok.isAigc,true);assert.equal(p.platformSpecific.tiktok.privacyLevel,'SELF_ONLY');assert.equal(p.status,'draft');assert.deepEqual(p.mediaFileIds,[5])});
+test('Telegram transport limits are enforced before external writes',()=>{const errors=checkPublication({selected:['telegram'],caption:'x'.repeat(1025),bytes:21*1024*1024,ratio:'9:16'});assert.equal(errors.length,2)});
+test('horizontal video is not silently sent as vertical Reels',()=>assert.equal(checkPublication({selected:['instagram'],caption:'',bytes:100,ratio:'16:9'}).length,1));
+test('duration estimate and formatting preserve content',()=>{assert.equal(estimateSeconds('слово '.repeat(135)),60);assert.equal(cleanScript('Новость  один .\n\n\nНовость два'), 'Новость один.\n\nНовость два')});
