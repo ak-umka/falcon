@@ -17,6 +17,7 @@ export const SOURCES_LABEL: Record<RadarLanguage, string> = { ru: "Источн�
 export const autopilotSchema = z.object({
   enabled: z.boolean().default(false), consent: z.boolean().default(false),
   mode: z.enum(["review", "auto"]).default("review"),
+  autoCheck: z.boolean().default(true),
   languages: z.array(z.enum(radarLanguages)).min(1, "Выберите хотя бы один язык.").max(4).default(["ru"]),
   channels: z.array(z.enum(["telegram", "youtube"])).max(2).default(["telegram"]),
   youtubeLanguages: z.array(z.enum(radarLanguages)).max(4).default(["ru"]),
@@ -30,6 +31,7 @@ const itemDocument = z.object({
   storyTitle: z.string(), headline: z.string().default(""), narration: z.string().default(""), caption: z.string().default(""),
   sources: z.array(z.string()), urls: z.array(z.string()), visualQueries: z.array(z.string()).default([]),
   section: z.string().default(""), photoId: z.string().nullable().default(null),
+  check: z.object({ ok: z.boolean(), issues: z.array(z.string()) }).nullable().default(null),
 });
 export type RadarItemDocument = z.infer<typeof itemDocument>;
 
@@ -77,6 +79,28 @@ async function writeScripts(system: string, prompt: string, langs: RadarLanguage
   return parsed.data;
 }
 
+// ---------- Анализ перед автопубликацией ----------
+const CHECK_SYSTEM = `You are a strict fact-checking editor of a news channel. Compare every script with the source material the writer received.
+Flag only real problems: a fact, number, name, date, place or quote not supported by the material; a claim of an organization presented as verified fact instead of attributed; sales pitch, prices or calls to pay; a translation whose meaning differs from the other languages; offensive, defamatory or unsafe content.
+Style preferences and correctly attributed facts are not problems.
+Set ok=false only if at least one real problem exists. "issues" lists only real problems (never things that are fine or acceptable) — empty when ok=true. Write issues in Russian, short and concrete. Respond with JSON only.`;
+const checkSchema = (langs: string[]) => z.object({ verdict: z.object(Object.fromEntries(langs.map(l => [l, z.object({ ok: z.boolean(), issues: z.array(z.string().max(300)).max(8).default([]) })]))).partial() });
+/** Второй, независимый проход модели: сверка сценариев с источниками. Ошибка анализа = не публиковать автоматически. */
+async function analyseScripts(material: string, scripts: Partial<Record<RadarLanguage, { headline: string; narration: string; caption: string }>>, model: string, key: string) {
+  const langs = Object.keys(scripts);
+  const fail = Object.fromEntries(langs.map(l => [l, { ok: false, issues: ["Автопроверка не выполнена — нужна проверка редактора."] }]));
+  try {
+    const r = await fetch("https://api.deepseek.com/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, messages: [{ role: "system", content: CHECK_SYSTEM }, { role: "user", content: `MATERIAL GIVEN TO THE WRITER:\n${material}\n\nSCRIPTS:\n${JSON.stringify(scripts)}\n\nReturn JSON: {"verdict":{${langs.map(l => `"${l}":{"ok":true|false,"issues":["..."]}`).join(",")}}}` }],
+        response_format: { type: "json_object" }, thinking: { type: "disabled" }, temperature: 0, max_tokens: 3000, stream: false }), signal: AbortSignal.timeout(90000) });
+    const data: any = await r.json().catch(() => null), choice = data?.choices?.[0];
+    if (!r.ok || choice?.finish_reason !== "stop") return fail;
+    const parsed = checkSchema(langs).safeParse(JSON.parse(choice.message.content));
+    if (!parsed.success) return fail;
+    return Object.fromEntries(langs.map(l => [l, parsed.data.verdict[l] ?? fail[l]])) as Record<string, { ok: boolean; issues: string[] }>;
+  } catch { return fail; }
+}
+
 type Draft = { key: string; base: { storyTitle: string; sources: string[]; urls: string[] }; sourceLine: Record<RadarLanguage, string>; factChecks: string[];
   section?: Record<RadarLanguage, string>; photoId?: string | null; system: string; prompt: () => Promise<string> };
 
@@ -87,15 +111,17 @@ async function draftItems(owner: string, d: Draft, settings: AutopilotSettings) 
   catch { throw new AppError("Эта история уже в работе.", 409); }
   const fail = async (status: string, error: string) => { await db().prepare("UPDATE radar_items SET status=?,error=?,updated_at=? WHERE id=?").bind(status, error, now(), claim).run(); };
   try {
-    const result = await writeScripts(d.system, await d.prompt(), settings.languages, settings.model, await deepseekKey(owner));
+    const key = await deepseekKey(owner), prompt = await d.prompt();
+    const result = await writeScripts(d.system, prompt, settings.languages, settings.model, key);
     if (result.risk.skip) { await fail("skipped", result.risk.reason || "Фильтр рисков"); return { skipped: result.risk.reason, items: [] }; }
     const queries = [...result.visual_queries.filter(Boolean), "world news", "city"];
+    const checks = settings.autoCheck && !result.risk.skip ? await analyseScripts(prompt, result.scripts, settings.model, key) : null;
     const statements = [], items: { id: string; projectId: string; language: RadarLanguage }[] = [];
     for (const language of settings.languages) {
       const s = result.scripts[language]; if (!s) continue;
       const caption = `${s.caption}\n\n📰 ${d.sourceLine[language]}`.slice(0, 2200), scenes = splitScenes(s.narration);
       const project = projectSchema.parse({ ...blankProject(), id: uid(), title: s.headline, script: scenes.map(x => x.text).join("\n\n"), scenes, language, caption, visualDirection: queries.join("; "), factChecks: d.factChecks });
-      const id = uid(), doc: RadarItemDocument = { ...d.base, headline: s.headline, narration: s.narration, caption, visualQueries: queries, section: d.section?.[language] || "", photoId: d.photoId || null };
+      const id = uid(), doc: RadarItemDocument = { ...d.base, headline: s.headline, narration: s.narration, caption, visualQueries: queries, section: d.section?.[language] || "", photoId: d.photoId || null, check: checks?.[language] ?? null };
       statements.push(db().prepare("INSERT INTO projects(id,owner_id,title,document,updated_at) VALUES(?,?,?,?,?)").bind(project.id, owner, project.title, JSON.stringify(project), now()),
         db().prepare("INSERT INTO radar_items(id,owner_id,story_key,language,project_id,status,document,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)").bind(id, owner, d.key, language, project.id, "rendering", JSON.stringify(doc), now(), now()));
       items.push({ id, projectId: project.id, language });
@@ -222,6 +248,11 @@ export async function completeRender(id: string, token: string, file: File) {
     ]);
   } catch (e) { await bucket().delete(key); throw e; }
   const settings = await autopilotSettings(owner);
+  const check = itemDocument.parse(JSON.parse(row.document)).check;
+  if (settings.mode === "auto" && check && !check.ok) {
+    await db().prepare("UPDATE radar_items SET error=?,updated_at=? WHERE id=?").bind(`Автопроверка не пройдена: ${check.issues.join("; ")}`.slice(0, 500), now(), id).run();
+    return { status: "review", check };
+  }
   if (settings.mode === "auto") {
     const connected = await channelStatus(owner);
     const channels = settings.channels.filter(c => connected[c] && (c !== "youtube" || settings.youtubeLanguages.includes(row.language)));

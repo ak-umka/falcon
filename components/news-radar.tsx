@@ -4,10 +4,10 @@ import {ArrowRight,CheckCircle2,Clapperboard,ExternalLink,ImagePlus,Link2,Loader
 import {request} from "@/lib/studio-client";
 
 type Lang="ru"|"uz"|"kk"|"en";
-type Settings={enabled:boolean;consent:boolean;mode:"review"|"auto";languages:Lang[];channels:("telegram"|"youtube")[];youtubeLanguages:Lang[];maxPerDay:number;everyMinutes:number;model:"deepseek-flash"|"deepseek-v4-pro"};
+type Settings={enabled:boolean;consent:boolean;mode:"review"|"auto";autoCheck:boolean;languages:Lang[];channels:("telegram"|"youtube")[];youtubeLanguages:Lang[];maxPerDay:number;everyMinutes:number;model:"deepseek-flash"|"deepseek-v4-pro"};
 type Story={key:string;title:string;sources:string[];articles:number;newest:string;taken:boolean;urls:{source:string;url:string}[]};
 type Target={channel:"telegram"|"youtube";status:string;url?:string;error?:string};
-type Item={id:string;story_key:string;language:string;project_id:string|null;status:string;media_id:string|null;error:string|null;created_at:string;result:Target[]|null;document:{storyTitle:string;headline:string;caption:string;sources:string[]}};
+type Item={id:string;story_key:string;language:string;project_id:string|null;status:string;media_id:string|null;error:string|null;created_at:string;result:Target[]|null;document:{storyTitle:string;headline:string;caption:string;sources:string[];check?:{ok:boolean;issues:string[]}|null}};
 type State={settings:Settings;stories:Story[];items:Item[];channels:{telegram:{name:string;bot:string}|null;youtube:{name:string}|null;youtubeAvailable:boolean};deepseekConfigured:boolean;lastCollected:string|null;runnerSeen:string|null;today:number};
 
 const LANGS:{id:Lang;name:string}[]=[{id:"ru",name:"Русский"},{id:"uz",name:"Oʻzbekcha"},{id:"kk",name:"Қазақша"},{id:"en",name:"English"}];
@@ -39,6 +39,7 @@ export default function NewsRadar({onOpenProject,onSettings,onError,notify}:{onO
    <section className="panel"><div className="panel-heading"><h2><Radar size={17}/>Автопилот</h2></div><div className="radar-body">
     <div className="switch-row first"><div><b>Включить автопилот</b><small>Каждые {s.everyMinutes} мин берёт лучшую новую проверенную историю.</small></div><input className="switch" type="checkbox" checked={s.enabled} onChange={e=>set({enabled:e.target.checked})}/></div>
     <label className="field-label">Режим<div className="segmented small"><button className={s.mode==="review"?"selected":""} onClick={()=>set({mode:"review"})}>Проверка редактором</button><button className={s.mode==="auto"?"selected":""} onClick={()=>set({mode:"auto"})}>Публиковать сразу</button></div></label>
+    <div className="switch-row"><div><b>Анализ перед публикацией</b><small>Второй проход AI сверяет каждый сценарий с источниками. В режиме «Публиковать сразу» уходит только прошедшее проверку, остальное ждёт вас (+≈0,1 цента на историю).</small></div><input className="switch" type="checkbox" checked={s.autoCheck} onChange={e=>set({autoCheck:e.target.checked})}/></div>
     <div className="field-label">Языки роликов<div className="radar-checks">{LANGS.map(l=><label key={l.id}><input type="checkbox" checked={s.languages.includes(l.id)} onChange={()=>set({languages:toggle(s.languages,l.id)})}/>{l.name}</label>)}</div></div>
     <div className="radar-row"><label className="field-label">Историй в сутки<input type="number" min={1} max={24} value={s.maxPerDay} onChange={e=>set({maxPerDay:Math.max(1,Math.min(24,Number(e.target.value)||1))})}/></label>
      <label className="field-label">Интервал, мин<input type="number" min={15} max={720} step={15} value={s.everyMinutes} onChange={e=>set({everyMinutes:Math.max(15,Math.min(720,Number(e.target.value)||60))})}/></label></div>
@@ -92,7 +93,7 @@ function ItemCard({item:i,channels,busy,onOpen,onPublish,onReject}:{item:Item;ch
  const [pick,setPick]=useState<("telegram"|"youtube")[]>(available);
  return <div className="radar-video"><div className="radar-video-media">{i.media_id?<video src={`/api/media/${i.media_id}#t=1`} controls playsInline preload="metadata"/>:<div className="scene-placeholder"><Loader2 size={26} className={i.status==="rendering"?"spin":""}/><p>{STATUS[i.status]}</p></div>}</div>
   <div className="radar-video-body"><div className="radar-video-top"><span className="radar-pill">{i.language.toUpperCase()}</span><span className={`radar-pill ${i.status}`}>{STATUS[i.status]||i.status}</span></div>
-   <b>{i.document.headline}</b><p>{i.document.caption}</p>{i.error&&<p className="field-error">{i.error}</p>}
+   <b>{i.document.headline}</b>{i.document.check&&(i.document.check.ok?<p className="radar-ok">✓ Автопроверка: расхождений с источниками нет</p>:<p className="field-error">⚠ Автопроверка: {i.document.check.issues.join("; ")}</p>)}<p>{i.document.caption}</p>{i.error&&<p className="field-error">{i.error}</p>}
    {i.result?.map(r=><p key={r.channel} className={r.status==="published"?"radar-ok":"field-error"}>{r.channel==="telegram"?"Telegram":"YouTube"}: {r.url?<a href={r.url.startsWith("http")?r.url:undefined} target="_blank" rel="noreferrer">{r.url}</a>:r.error}</p>)}
    {["review","published"].includes(i.status)&&i.media_id&&<div className="radar-actions">{available.length>0&&<>{available.map(c=><label key={c} className="inline-check"><input type="checkbox" checked={pick.includes(c)} onChange={()=>setPick(p=>p.includes(c)?p.filter(x=>x!==c):[...p,c])}/>{c==="telegram"?"Telegram":"YouTube"}</label>)}
     <button className="btn primary small" disabled={!!busy||!pick.length} onClick={()=>onPublish(pick)}>{busy===`pub-${i.id}`?<Loader2 size={15} className="spin"/>:<Send size={15}/>}Опубликовать</button></>}
