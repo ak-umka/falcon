@@ -6,7 +6,7 @@ export const platforms = ["facebook", "instagram", "tiktok", "telegram"] as cons
 export type Platform = typeof platforms[number];
 export const projectSchema = z.object({
   ...productionFields,
-  id: z.string().uuid(), title: z.string().trim().min(1).max(120), script: z.string().max(12000), language: z.enum(["ru", "en", "uz"]),
+  id: z.string().uuid(), title: z.string().trim().min(1).max(120), script: z.string().max(12000), language: z.enum(["ru", "en", "uz", "kk"]),
   avatarId: z.string().uuid().nullable(), voiceId: z.string().max(150), voiceMode: z.enum(["tts", "audio"]), audioId: z.string().uuid().nullable(),
   ratio: z.enum(["9:16", "16:9", "1:1"]), background: z.enum(["original", "navy", "ivory", "slate", "scene", "recipe"]),
   backgroundId: z.string().uuid().nullable().default(null), backgroundRecipe: sceneRecipeSchema.default(defaultSceneRecipe),

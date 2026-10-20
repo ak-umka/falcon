@@ -48,3 +48,16 @@ export const productionRuns=sqliteTable("production_runs",{
  leaseToken:text("lease_token"),leaseUntil:integer("lease_until").notNull().default(0),createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull()
 },t=>[uniqueIndex("production_run_request").on(t.ownerId,t.requestKey),uniqueIndex("production_run_active").on(t.ownerId,t.projectId).where(sql`${t.status} IN ('queued','running','waiting')`)]);
 export const workerHealth=sqliteTable("worker_health",{id:text("id").primaryKey(),updatedAt:text("updated_at").notNull()});
+
+// Новостной радар и автопилот (v8)
+export const radarArticles=sqliteTable("radar_articles",{
+ id:text("id").primaryKey(),url:text("url").notNull(),source:text("source").notNull(),title:text("title").notNull(),summary:text("summary").notNull(),
+ publishedAt:text("published_at").notNull(),fetchedAt:text("fetched_at").notNull()
+},t=>[uniqueIndex("radar_article_url").on(t.url),index("radar_article_published").on(t.publishedAt)]);
+export const autopilotSettings=sqliteTable("autopilot_settings",{ownerId:text("owner_id").primaryKey(),document:text("document").notNull(),updatedAt:text("updated_at").notNull()});
+export const radarItems=sqliteTable("radar_items",{
+ id:text("id").primaryKey(),ownerId:text("owner_id").notNull(),storyKey:text("story_key").notNull(),language:text("language").notNull(),
+ projectId:text("project_id"),status:text("status").notNull(),document:text("document").notNull(),mediaId:text("media_id"),
+ result:text("result"),error:text("error"),leaseToken:text("lease_token"),leaseUntil:integer("lease_until").notNull().default(0),
+ createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull()
+},t=>[uniqueIndex("radar_item_story").on(t.ownerId,t.storyKey,t.language),index("radar_item_owner").on(t.ownerId,t.createdAt),index("radar_item_status").on(t.status,t.leaseUntil)]);

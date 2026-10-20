@@ -50,6 +50,13 @@
       "when": 1791946747415,
       "tag": "0006_icy_thanos",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1792518721496,
+      "tag": "0007_burly_swordsman",
+      "breakpoints": true
     }
   ]
 }
