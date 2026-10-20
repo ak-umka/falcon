@@ -1,7 +1,7 @@
 # Falcon News Studio v8 — что изменено относительно v7
 
 Дата: 20 октября 2026. Основа: исходники v7, commit `171f7fe21f11ff9eb39cca9ba90ba3ab3e150b53`.
-Все изменения — отдельные коммиты поверх коммита `Baseline: Falcon News Studio v7`; полный diff: `git diff 0a4ca71 HEAD`.
+Все изменения — отдельные коммиты поверх коммита `Baseline: Falcon News Studio v7`; полный diff: `git diff fb93333 HEAD`.
 
 ## Зачем
 
