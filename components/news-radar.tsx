@@ -79,7 +79,7 @@ function ItemCard({item:i,channels,busy,onOpen,onPublish,onReject}:{item:Item;ch
  const done=(c:string)=>i.result?.find(r=>r.channel===c&&r.status==="published");
  const available=(["telegram","youtube"] as const).filter(c=>channels[c]&&!done(c));
  const [pick,setPick]=useState<("telegram"|"youtube")[]>(available);
- return <div className="radar-video"><div className="radar-video-media">{i.media_id?<video src={`/api/media/${i.media_id}`} controls playsInline preload="metadata"/>:<div className="scene-placeholder"><Loader2 size={26} className={i.status==="rendering"?"spin":""}/><p>{STATUS[i.status]}</p></div>}</div>
+ return <div className="radar-video"><div className="radar-video-media">{i.media_id?<video src={`/api/media/${i.media_id}#t=1`} controls playsInline preload="metadata"/>:<div className="scene-placeholder"><Loader2 size={26} className={i.status==="rendering"?"spin":""}/><p>{STATUS[i.status]}</p></div>}</div>
   <div className="radar-video-body"><div className="radar-video-top"><span className="radar-pill">{i.language.toUpperCase()}</span><span className={`radar-pill ${i.status}`}>{STATUS[i.status]||i.status}</span></div>
    <b>{i.document.headline}</b><p>{i.document.caption}</p>{i.error&&<p className="field-error">{i.error}</p>}
    {i.result?.map(r=><p key={r.channel} className={r.status==="published"?"radar-ok":"field-error"}>{r.channel==="telegram"?"Telegram":"YouTube"}: {r.url?<a href={r.url.startsWith("http")?r.url:undefined} target="_blank" rel="noreferrer">{r.url}</a>:r.error}</p>)}
