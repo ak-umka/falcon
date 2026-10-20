@@ -1,6 +1,6 @@
 "use client";
 import {useEffect,useState} from "react";
-import {ArrowRight,CheckCircle2,Clapperboard,ExternalLink,Loader2,Newspaper,Radar,RefreshCw,Send,ShieldCheck,X,MonitorPlay} from "lucide-react";
+import {ArrowRight,CheckCircle2,Clapperboard,ExternalLink,ImagePlus,Link2,Loader2,Newspaper,Radar,RefreshCw,Send,ShieldCheck,X,MonitorPlay} from "lucide-react";
 import {request} from "@/lib/studio-client";
 
 type Lang="ru"|"uz"|"kk"|"en";
@@ -16,6 +16,7 @@ const ago=(iso:string|null)=>{if(!iso)return "никогда";const m=Math.round
 
 export default function NewsRadar({onOpenProject,onSettings,onError,notify}:{onOpenProject:(id:string)=>void;onSettings:()=>void;onError:(e:unknown)=>unknown;notify:(s:string)=>void}){
  const [state,setState]=useState<State|null>(null),[draft,setDraft]=useState<Settings|null>(null),[busy,setBusy]=useState(""),[consent,setConsent]=useState(false),[tg,setTg]=useState({token:"",chat:""});
+ const [src,setSrc]=useState({url:"",facts:"",photoId:null as string|null,photoName:"",consent:false});
  const load=async()=>{try{const s:State=await request("/api/radar");setState(s);setDraft(d=>d??s.settings)}catch(e){onError(e)}};
  useEffect(()=>{void load();const yt=new URLSearchParams(location.search).get("youtube");if(yt){notify(yt.startsWith("ok:")?`YouTube подключён: ${yt.slice(3)}`:yt.slice(6));const u=new URL(location.href);u.searchParams.delete("youtube");history.replaceState({},"",u)}
   const t=setInterval(()=>{if(document.visibilityState==="visible")void load()},15000);return()=>clearInterval(t)},[]);
@@ -64,6 +65,16 @@ export default function NewsRadar({onOpenProject,onSettings,onError,notify}:{onO
     {st.taken?<span className="radar-pill">В работе</span>:<button className="btn small" disabled={!!busy||!consent||!state.deepseekConfigured} onClick={()=>void act(`draft-${st.key}`,{action:"draft",storyKey:st.key,consent:true},"Сценарии созданы, ролики отправлены на монтаж")}>{busy===`draft-${st.key}`?<Loader2 size={15} className="spin"/>:<Clapperboard size={15}/>}Сделать выпуск</button>}</div>)
    :<p className="radar-empty">Историй пока нет. Нажмите «Обновить ленты».</p>}
   </section>
+
+  <section className="panel"><div className="panel-heading"><h2><Link2 size={17}/>Новость из ссылки</h2><small>Сайт организации, пресс-релиз, событие</small></div><div className="radar-body">
+   <p className="hint">Факты берутся только со страницы и из вашего описания. Заявления организации подаются со ссылкой на неё; цены и призывы оплатить в ролик не попадают. В кадре — рубрика «Партнёры».</p>
+   <label className="field-label">Ссылка<input className="radar-input" type="url" placeholder="https://…" value={src.url} onChange={e=>setSrc({...src,url:e.target.value})}/></label>
+   <label className="field-label">Факты от редакции<textarea className="radar-input" rows={3} maxLength={1500} placeholder="Кто на фото, какое событие, где и когда, главное из выступления" value={src.facts} onChange={e=>setSrc({...src,facts:e.target.value})}/></label>
+   <div className="radar-row radar-photo"><label className="btn small"><ImagePlus size={15}/>{src.photoName||"Фото для фона (JPG/PNG)"}<input hidden type="file" accept="image/jpeg,image/png" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;setBusy("photo");try{const fd=new FormData();fd.append("file",f);fd.append("kind","photo");const r=await request("/api/media",fd);setSrc(v=>({...v,photoId:r.id,photoName:f.name}))}catch(err){onError(err)}finally{setBusy("")}}}/></label>
+    {src.photoId&&<button className="text-btn danger" onClick={()=>setSrc({...src,photoId:null,photoName:""})}>Убрать фото</button>}<small className="hint">Публикуйте фото людей только с их согласия.</small></div>
+   <label className="review-check"><input type="checkbox" checked={src.consent} onChange={e=>setSrc({...src,consent:e.target.checked})}/><span>Разрешаю один платный запрос DeepSeek для этого материала.</span></label>
+   <button className="btn primary" disabled={!!busy||!src.consent||!/^https:\/\//.test(src.url)||!state.deepseekConfigured} onClick={()=>void act("source",{action:"source",consent:true,source:{url:src.url,facts:src.facts,photoId:src.photoId}},"Сценарии созданы, ролики отправлены на монтаж").then(r=>{if(r)setSrc({url:"",facts:"",photoId:null,photoName:"",consent:false})})}>{busy==="source"?<Loader2 size={17} className="spin"/>:<Clapperboard size={17}/>}Сделать выпуск</button>
+  </div></section>
 
   <section className="panel"><div className="panel-heading"><h2><Clapperboard size={17}/>Ролики</h2><small>{s.mode==="auto"?"Публикуются сразу после монтажа":"Публикуются после вашей проверки"}</small></div>
    {review.length?<div className="radar-videos">{review.map(i=><ItemCard key={i.id} item={i} channels={state.channels} busy={busy} onOpen={()=>i.project_id&&onOpenProject(i.project_id)}

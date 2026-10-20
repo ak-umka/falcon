@@ -9,7 +9,7 @@
 .radar-body{padding:4px 20px 20px}
 .radar-body .switch-row.first{border-top:0;margin-top:0}
 .radar-body .field-label{margin:14px 0}
-.radar-body input[type=number],.radar-row input{border:1px solid var(--line);border-radius:7px;padding:9px 11px;font-size:13px;min-width:0;width:100%;background:#fff}
+.radar-body input[type=number],.radar-row input,.radar-input{border:1px solid var(--line);border-radius:7px;padding:9px 11px;font-size:13px;min-width:0;width:100%;background:#fff}
 .radar-row{display:flex;gap:10px;align-items:flex-end}
 .radar-row>*{flex:1}
 .radar-row .btn{flex:0 0 auto}
@@ -47,3 +47,7 @@
 .radar-actions .btn.primary{flex:0 0 auto}
 @media (max-width:900px){.radar-grid{grid-template-columns:1fr}}
 @media (max-width:560px){.radar-videos{grid-template-columns:1fr;padding:14px}.radar-video-media{flex-basis:100px}.radar-video-media video,.radar-video-media .scene-placeholder{width:100px}.radar-story{flex-direction:column;align-items:flex-start;padding:14px 16px}.radar-row{flex-wrap:wrap}.radar-body{padding:4px 16px 16px}}
+.radar-input{font-family:inherit;resize:vertical;color:var(--ink)}
+.radar-photo{align-items:center;flex-wrap:wrap}
+.radar-photo>*{flex:0 0 auto}
+.radar-photo .hint{margin:0}

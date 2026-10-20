@@ -65,8 +65,17 @@ def render(task: dict) -> Path:
     voice = work / "voice.mp3"
     words = synthesize(task["narration"], VOICES[lang], voice)
     total = media_duration(voice) + 0.6
-    images = find_images(PIXABAY, task["visualQueries"], 4, WORK / "images")
+    if task.get("photo"):
+        # Фото редакции (например, спикер события) — фоном весь ролик, два плана с разным зумом.
+        resp = client.post("/api/internal/autopilot", json={"action": "photo", "id": task["id"], "token": task["token"]})
+        resp.raise_for_status()
+        photo = work / "photo.jpg"
+        photo.write_bytes(resp.content)
+        images = [photo, photo]
+    else:
+        images = find_images(PIXABAY, task["visualQueries"], 4, WORK / "images")
     section, sources_label = LABELS[lang]
+    section = task.get("section") or section
     base = base_layer(W, H, BRAND, section, task["headline"], task["sources"], sources_label)
     overlays = render_overlays(words, total, base, work / "overlays")
     return compose(images, overlays, voice, total, W, H, FPS, work, work / "video.mp4")

@@ -1,5 +1,5 @@
-import { db, now } from "./server";
-import { clusterStories, parseFeed, radarSources, storyKey, type RadarArticle, type RadarStory } from "./radar-core";
+import { AppError, db, now } from "./server";
+import { cleanText, clusterStories, parseFeed, radarSources, storyKey, type RadarArticle, type RadarStory } from "./radar-core";
 
 const COLLECT_EVERY_MS = 15 * 60_000, KEEP_DAYS = 7, WINDOW_HOURS = 36;
 const UA = "Mozilla/5.0 (compatible; FalconNewsRadar/1.0)";
@@ -47,4 +47,16 @@ export async function articleText(url: string) {
     }).transform(r).arrayBuffer();
     return parts.filter(p => p.length > 40).join("\n").slice(0, 6000);
   } catch { return ""; }
+}
+
+/** Видимый текст любой страницы (лендинг, пресс-релиз) — для выпуска «из ссылки». */
+export async function pageText(url: string) {
+  let r: Response;
+  try { r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow", signal: AbortSignal.timeout(20000) }); }
+  catch { throw new AppError("Страница не открылась. Проверьте ссылку.", 400); }
+  if (!r.ok || !(r.headers.get("content-type") || "").includes("html")) throw new AppError(`Страница вернула HTTP ${r.status} или не HTML.`, 400);
+  const html = (await r.text()).slice(0, 2_000_000);
+  const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "";
+  const text = cleanText(html.replace(/<(script|style|noscript|svg|form)[\s\S]*?<\/\1>/gi, " ").replace(/<\/(p|div|h\d|li|section|br)>/gi, "\n"));
+  return { title: cleanText(title).slice(0, 200), text: text.slice(0, 8000) };
 }
