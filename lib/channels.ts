@@ -37,10 +37,15 @@ export async function connectTelegram(owner: string, token: string, chat: string
   if (!/^\d{6,12}:[\w-]{30,}$/.test(token)) throw new AppError("Похоже, это не токен бота. Получите его у @BotFather.");
   const chatId = /^-?\d+$/.test(chat) ? chat : `@${chat.replace(/^https:\/\/t\.me\//, "").replace(/^@/, "")}`;
   const me = await telegram(token, "getMe", {}), info = await telegram(token, "getChat", { chat_id: chatId });
-  const member = await telegram(token, "getChatMember", { chat_id: info.id, user_id: me.id });
-  if (member.status !== "administrator" || member.can_post_messages === false) throw new AppError(`Сделайте @${me.username} администратором канала с правом публикации.`);
-  await saveChannel(owner, "telegram", { token, chatId: String(info.id) }, { name: info.title || chatId, bot: `@${me.username}` });
-  return { name: info.title || chatId };
+  // Канал — бот должен быть админом с правом публикации; группа — участником; личный чат — пользователь нажал /start.
+  if (info.type !== "private") {
+    const member = await telegram(token, "getChatMember", { chat_id: info.id, user_id: me.id });
+    if (info.type === "channel" ? member.status !== "administrator" || member.can_post_messages === false : ["left", "kicked"].includes(member.status))
+      throw new AppError(info.type === "channel" ? `Сделайте @${me.username} администратором канала с правом публикации.` : `Добавьте @${me.username} в группу.`);
+  }
+  const name = info.title || (info.type === "private" ? `Личный чат ${[info.first_name, info.last_name].filter(Boolean).join(" ")}`.trim() : chatId);
+  await saveChannel(owner, "telegram", { token, chatId: String(info.id) }, { name, bot: `@${me.username}` });
+  return { name };
 }
 async function publishTelegram(owner: string, mediaId: string, caption: string) {
   const secret = await channelSecret(owner, "telegram"); if (!secret) throw new AppError("Telegram-канал не подключён.");
@@ -50,8 +55,8 @@ async function publishTelegram(owner: string, mediaId: string, caption: string) 
   form.append("chat_id", secret.chatId); form.append("caption", caption.slice(0, 1024)); form.append("supports_streaming", "true");
   form.append("width", "1080"); form.append("height", "1920"); form.append("video", new Blob([await file.arrayBuffer()], { type: m.mime }), m.filename);
   const msg = await telegram(secret.token, "sendVideo", form);
-  const username = msg.chat?.username;
-  return username ? `https://t.me/${username}/${msg.message_id}` : `telegram:${msg.chat?.id}/${msg.message_id}`;
+  // Публичная ссылка есть только у сообщений в публичных каналах и группах.
+  return msg.chat?.type !== "private" && msg.chat?.username ? `https://t.me/${msg.chat.username}/${msg.message_id}` : `Сообщение №${msg.message_id} в чате`;
 }
 
 // ---------- YouTube ----------
