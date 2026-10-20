@@ -1,7 +1,12 @@
 """[8] Монтаж: фоны с плавным зумом + графика + озвучка → MP4 9:16."""
 import json
+import math
 import subprocess
 from pathlib import Path
+
+from PIL import Image
+
+ZOOM = 1.12  # насколько приближается кадр за сегмент
 
 
 def _run(args: list[str]) -> None:
@@ -17,6 +22,34 @@ def media_duration(path: Path) -> float:
     return float(json.loads(out)["format"]["duration"])
 
 
+def _ken_burns(img: Path, out: Path, frames: int, w: int, h: int, fps: int, zoom_in: bool, enc: list[str]) -> None:
+    """Плавный зум к центру (эффект Кена Бёрнса).
+
+    zoompan и scale с eval=frame в FFmpeg округляют положение до целых пикселей — картинка дёргается.
+    Здесь каждый кадр — аффинное преобразование Pillow с субпиксельной точностью, FFmpeg только кодирует.
+    """
+    src = Image.open(img).convert("RGB")
+    cover = max(w * ZOOM / src.width, h * ZOOM / src.height)  # запас под зум без пустых краёв
+    base = src.resize((round(src.width * cover), round(src.height * cover)), Image.LANCZOS)
+    cx, cy = base.width / 2, base.height / 2
+    proc = subprocess.Popen(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
+                             "-s", f"{w}x{h}", "-r", str(fps), "-i", "-", *enc, str(out)], stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        for n in range(frames):
+            t = n / max(frames - 1, 1)
+            ease = 0.5 - 0.5 * math.cos(math.pi * t)  # мягкий старт и остановка
+            z = 1 + (ZOOM - 1) * (ease if zoom_in else 1 - ease)
+            a = ZOOM / z  # пикселей base на пиксель кадра: окно шириной w·ZOOM/z вокруг центра
+            frame = base.transform((w, h), Image.AFFINE, (a, 0, cx - a * w / 2, 0, a, cy - a * h / 2), resample=Image.BILINEAR)
+            proc.stdin.write(frame.tobytes())
+        proc.stdin.close()
+        if proc.wait():
+            raise RuntimeError(f"FFmpeg: {proc.stderr.read().decode()[-800:]}")
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+
 def _background(images: list[Path], total: float, w: int, h: int, fps: int, work: Path) -> Path:
     bg = work / "background.mp4"
     enc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-r", str(fps)]
@@ -26,14 +59,11 @@ def _background(images: list[Path], total: float, w: int, h: int, fps: int, work
         return bg
 
     seg_dur = total / len(images)
-    frames = int(seg_dur * fps) + 1
+    frames = max(1, round(seg_dur * fps))
     parts = []
     for i, img in enumerate(images):
-        zoom = f"1+0.12*on/{frames}" if i % 2 == 0 else f"1.12-0.12*on/{frames}"
-        vf = (f"scale={w * 2}:{h * 2}:force_original_aspect_ratio=increase,crop={w * 2}:{h * 2},"
-              f"zoompan=z='{zoom}':d={frames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps={fps}")
         part = work / f"seg_{i}.mp4"
-        _run(["-i", str(img), "-vf", vf, "-frames:v", str(frames), *enc, str(part)])
+        _ken_burns(Path(img), part, frames, w, h, fps, zoom_in=i % 2 == 0, enc=enc)
         parts.append(part)
 
     listing = work / "segments.txt"
