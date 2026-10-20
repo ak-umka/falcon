@@ -55,3 +55,6 @@ next-env.d.ts
 /.codex/
 /outputs/
 /work/
+
+# local secrets
+.dev.vars
