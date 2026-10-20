@@ -117,7 +117,7 @@ async function takenStories(owner: string) {
 }
 export async function freshStories(owner: string, limit = 12) {
   const [stories, taken] = await Promise.all([verifiedStories(), takenStories(owner)]);
-  return stories.slice(0, limit).map(s => ({ key: s.key, title: s.lead.title, sources: s.sources, articles: s.articles.length, newest: s.newest, score: Math.round(s.score * 10) / 10, taken: taken.has(s.key), urls: s.articles.slice(0, 6).map(a => ({ source: a.source, url: a.url })) }));
+  return stories.slice(0, limit).map(s => ({ key: s.key, title: s.lead.title, sources: s.sources, articles: s.articles.length, newest: s.newest, score: Math.round(s.score * 10) / 10, taken: taken.has(s.key), urls: s.sources.slice(0, 6).map(src => ({ source: src, url: s.articles.find(a => a.source === src)!.url })) }));
 }
 
 /** Шаг автопилота для внешнего runner: сбор лент и не больше одной новой истории на владельца. */

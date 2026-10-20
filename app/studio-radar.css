@@ -1,0 +1,49 @@
+/* Новостной радар (v8) — на токенах и компонентах студии */
+.radar-status{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+.radar-status>span{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:6px 12px}
+.radar-status .ok{color:var(--success);border-color:#cfe6dc;background:#f2faf6}
+.radar-status .warn{color:#93651c;border-color:#efdfbf;background:#fffaf0}
+.radar-status .text-btn{min-height:0;font-size:12px;padding:0;text-decoration:underline}
+.radar-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-bottom:18px;align-items:start}
+.radar-grid~.panel{margin-bottom:18px}
+.radar-body{padding:4px 20px 20px}
+.radar-body .switch-row.first{border-top:0;margin-top:0}
+.radar-body .field-label{margin:14px 0}
+.radar-body input[type=number],.radar-row input{border:1px solid var(--line);border-radius:7px;padding:9px 11px;font-size:13px;min-width:0;width:100%;background:#fff}
+.radar-row{display:flex;gap:10px;align-items:flex-end}
+.radar-row>*{flex:1}
+.radar-row .btn{flex:0 0 auto}
+.radar-checks{display:flex;flex-wrap:wrap;gap:8px 16px;color:var(--ink)}
+.radar-checks label,.inline-check{display:inline-flex;align-items:center;gap:6px;font-size:13px;margin-right:8px}
+.radar-channel{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid #eef1f6}
+.radar-channel b{display:block;font-size:13px}
+.radar-channel small{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+.radar-body .ai-security{margin-top:16px}
+.radar-consent{padding:12px 20px 0;margin:0}
+.radar-story{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 20px;border-top:1px solid #eef1f6}
+.radar-story b{display:block;font-size:14px;font-weight:550;line-height:1.4}
+.radar-story small{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.radar-story .btn{flex-shrink:0}
+.radar-links{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px}
+.radar-links a{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:#536984}
+.radar-links a:hover{color:var(--primary)}
+.radar-pill{display:inline-flex;align-items:center;font-size:11px;font-weight:600;letter-spacing:.02em;border-radius:20px;padding:3px 9px;background:var(--blue-soft);color:#365c91;white-space:nowrap}
+.radar-pill.published{background:#e8f5ef;color:var(--success)}
+.radar-pill.failed,.radar-pill.rejected{background:#fff0f1;color:var(--danger)}
+.radar-pill.rendering,.radar-pill.publishing{background:#fff6e6;color:#93651c}
+.radar-empty{padding:22px 20px;color:var(--muted);font-size:13px}
+.radar-videos{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;padding:18px 20px}
+.radar-video{display:flex;gap:14px;border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+.radar-video-media{flex:0 0 130px}
+.radar-video-media video,.radar-video-media .scene-placeholder{width:130px;aspect-ratio:9/16;border-radius:8px;background:var(--night);object-fit:cover}
+.radar-video-media .scene-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#b6c3d6;font-size:11px;text-align:center;padding:8px}
+.radar-video-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.radar-video-top{display:flex;gap:6px}
+.radar-video-body b{font-size:14px;line-height:1.35}
+.radar-video-body>p{font-size:12px;color:var(--muted);line-height:1.5;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.radar-video-body a{word-break:break-all}
+.radar-ok{font-size:12px;color:var(--success)}
+.radar-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:auto}
+.radar-actions .btn.primary{flex:0 0 auto}
+@media (max-width:900px){.radar-grid{grid-template-columns:1fr}}
+@media (max-width:560px){.radar-videos{grid-template-columns:1fr;padding:14px}.radar-video-media{flex-basis:100px}.radar-video-media video,.radar-video-media .scene-placeholder{width:100px}.radar-story{flex-direction:column;align-items:flex-start;padding:14px 16px}.radar-row{flex-wrap:wrap}.radar-body{padding:4px 16px 16px}}
