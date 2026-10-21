@@ -1,10 +1,15 @@
 import { env } from "cloudflare:workers";
 import { AppError,ownMedia } from "./server";
 const encoder=new TextEncoder();
+/** Ключ подписей (ссылки рендера, OAuth state). Отдельный от PROVIDER_ENCRYPTION_KEY: его смена не затрагивает зашифрованные ключи. */
+export function signingSecret(){
+ const vars=env as unknown as Record<string,string>,secret=vars.SIGNING_KEY;
+ if(!secret||secret.length<32)throw new AppError("Не настроен SIGNING_KEY (секрет сайта, не короче 32 символов).",503);
+ if(secret===vars.PROVIDER_ENCRYPTION_KEY)throw new AppError("SIGNING_KEY должен отличаться от PROVIDER_ENCRYPTION_KEY.",503);
+ return secret;
+}
 async function signingKey(){
- const secret=(env as unknown as Record<string,string>).PROVIDER_ENCRYPTION_KEY;
- if(!secret)throw new AppError("Не настроена подпись материалов.",503);
- return crypto.subtle.importKey("raw",encoder.encode(`render-media-v1:${secret}`),{name:"HMAC",hash:"SHA-256"},false,["sign","verify"]);
+ return crypto.subtle.importKey("raw",encoder.encode(`render-media-v1:${signingSecret()}`),{name:"HMAC",hash:"SHA-256"},false,["sign","verify"]);
 }
 export async function renderURL(owner:string,id:string){
  await ownMedia(id,owner);const expires=Math.floor(Date.now()/1000)+6*3600;

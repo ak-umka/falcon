@@ -2,6 +2,7 @@
 // BulkPublish остаётся для площадок, где нужна авторизация посетителя студии.
 import { env } from "cloudflare:workers";
 import { AppError, bucket, db, decryptCredential, encryptCredential, now, ownMedia, uid } from "./server";
+import { signingSecret } from "./render-grants";
 
 export type ChannelId = "telegram" | "youtube";
 type Secret = { telegram: { token: string; chatId: string }; youtube: { refreshToken: string } };
@@ -62,8 +63,7 @@ async function publishTelegram(owner: string, mediaId: string, caption: string) 
 // ---------- YouTube ----------
 const encoder = new TextEncoder();
 async function stateKey() {
-  const secret = vars().PROVIDER_ENCRYPTION_KEY; if (!secret) throw new AppError("Защищённое подключение пока недоступно.", 503);
-  return crypto.subtle.importKey("raw", encoder.encode(`youtube-oauth-v1:${secret}`), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
+  return crypto.subtle.importKey("raw", encoder.encode(`youtube-oauth-v1:${signingSecret()}`), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
 }
 const hex = (b: ArrayBuffer) => Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, "0")).join("");
 function youtubeClient() {

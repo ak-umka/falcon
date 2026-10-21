@@ -4,9 +4,15 @@ import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 import {withProductionOwner,productionOwner} from '../lib/provider-context.ts';
 const mod=s=>'data:text/javascript;base64,'+Buffer.from(s).toString('base64');
-let source=ts.transpileModule(readFileSync(new URL('../lib/render-grants.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-source=source.replaceAll('"cloudflare:workers"',JSON.stringify(mod('export const env={PROVIDER_ENCRYPTION_KEY:"test-only-key",SITE_PUBLIC_URL:"https://example.com"};'))).replaceAll('"./server"',JSON.stringify(mod('export class AppError extends Error{};export async function ownMedia(id,owner){if(owner!=="owner")throw new AppError("not owned");return {id};}')));
-const {renderURL,verifyRenderGrant}=await import(mod(source));
+const transpiled=ts.transpileModule(readFileSync(new URL('../lib/render-grants.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const load=envSource=>import(mod(transpiled.replaceAll('"cloudflare:workers"',JSON.stringify(mod(envSource))).replaceAll('"./server"',JSON.stringify(mod('export class AppError extends Error{};export async function ownMedia(id,owner){if(owner!=="owner")throw new AppError("not owned");return {id};}'))))+'#'+Math.random());
+const {renderURL,verifyRenderGrant}=await load('export const env={PROVIDER_ENCRYPTION_KEY:"encryption-key-for-tests-only-000000",SIGNING_KEY:"signing-key-for-tests-only-11111111",SITE_PUBLIC_URL:"https://example.com"};');
+test('render grants require a separate signing key',async()=>{
+ const id=crypto.randomUUID();
+ await assert.rejects((await load('export const env={PROVIDER_ENCRYPTION_KEY:"encryption-key-for-tests-only-000000"};')).renderURL('owner',id),/SIGNING_KEY/);
+ await assert.rejects((await load('export const env={PROVIDER_ENCRYPTION_KEY:"same-key-for-both-purposes-0000000000",SIGNING_KEY:"same-key-for-both-purposes-0000000000"};')).renderURL('owner',id),/отличаться/);
+ await assert.rejects((await load('export const env={PROVIDER_ENCRYPTION_KEY:"encryption-key-for-tests-only-000000",SIGNING_KEY:"short"};')).renderURL('owner',id),/32/);
+});
 test('render grant verifies ownership at issue and rejects altered IDs, expiry and signature',async()=>{
  const id=crypto.randomUUID();await assert.rejects(renderURL('stranger',id));
  const u=new URL(await renderURL('owner',id)),expires=u.searchParams.get('expires'),signature=u.searchParams.get('signature');

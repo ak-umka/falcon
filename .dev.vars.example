@@ -1,6 +1,8 @@
 # Локальные секреты для `pnpm dev`. Скопируйте в .dev.vars (не коммитится) и заполните.
 # PROVIDER_ENCRYPTION_KEY: openssl rand -base64 32
 PROVIDER_ENCRYPTION_KEY=
+# SIGNING_KEY: openssl rand -hex 32 (подписи ссылок рендера и OAuth; не равен ключу шифрования)
+SIGNING_KEY=
 # PRODUCTION_RUNNER_TOKEN: openssl rand -hex 32
 PRODUCTION_RUNNER_TOKEN=
 SITE_PUBLIC_URL=http://localhost:5173

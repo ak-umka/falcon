@@ -6,6 +6,7 @@
 
 | Переменная | Тип | Назначение | Обязательна |
 |---|---|---|---|
+| `SIGNING_KEY` | secret | подписи ссылок рендера и OAuth state; ≥ 32 символов, не равен `PROVIDER_ENCRYPTION_KEY` (`openssl rand -hex 32`) | **да** |
 | `YOUTUBE_CLIENT_ID` | secret | OAuth-клиент Google для загрузки в YouTube | только для YouTube |
 | `YOUTUBE_CLIENT_SECRET` | secret | секрет того же клиента | только для YouTube |
 

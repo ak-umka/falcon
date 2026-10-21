@@ -11,7 +11,7 @@ corepack enable
 corepack prepare pnpm@11.25.0 --activate
 pnpm install --frozen-lockfile
 node node_modules/typescript/bin/tsc --noEmit
-node --experimental-strip-types --test tests/*.test.mjs     # 50 тестов
+node --experimental-strip-types --test tests/*.test.mjs     # 51 тест
 pnpm run build
 ```
 
@@ -20,6 +20,7 @@ pnpm run build
 Как в `DEPLOY-RU.md` v7, раздел «Для доработанного исходника»: перенести изменения в репозиторий Sites штатным source helper, выполнить проверки и build, сделать commit/push/package, сохранить и опубликовать **новую** версию. Не создавайте новый Site.
 
 - Миграция `0007` входит в сборку и только добавляет таблицы. Дождитесь успешного применения миграций до доступа пользователей.
+- **Обязательно** добавьте secret `SIGNING_KEY` (`openssl rand -hex 32`, не равен `PROVIDER_ENCRYPTION_KEY`) — без него ссылки рендера Shotstack и подключение YouTube не работают (503).
 - Добавьте secrets `YOUTUBE_CLIENT_ID` и `YOUTUBE_CLIENT_SECRET`, если нужен YouTube (`V8-CONFIGURATION.md`).
 - Аудиторию сайта не меняйте. При owner-private аудитории внешнему runner нужен поддержанный сервисный доступ — как и в v7.
 
@@ -69,6 +70,7 @@ STUDIO_URL=http://127.0.0.1:5173 PRODUCTION_RUNNER_TOKEN=<из .dev.vars> PIXABA
 `.dev.vars` (не коммитится):
 ```
 PROVIDER_ENCRYPTION_KEY=<openssl rand -base64 32>
+SIGNING_KEY=<openssl rand -hex 32>
 PRODUCTION_RUNNER_TOKEN=<openssl rand -hex 32>
 SITE_PUBLIC_URL=http://localhost:5173
 YOUTUBE_CLIENT_ID=...
