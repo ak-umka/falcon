@@ -99,6 +99,7 @@ function ItemCard({item:i,channels,busy,onOpen,onPublish,onReject}:{item:Item;ch
    {["review","published"].includes(i.status)&&i.media_id&&<div className="radar-actions">{available.length>0&&<>{available.map(c=><label key={c} className="inline-check"><input type="checkbox" checked={pick.includes(c)} onChange={()=>setPick(p=>p.includes(c)?p.filter(x=>x!==c):[...p,c])}/>{c==="telegram"?"Telegram":"YouTube"}</label>)}
     <button className="btn primary small" disabled={!!busy||!pick.length} onClick={()=>onPublish(pick)}>{busy===`pub-${i.id}`?<Loader2 size={15} className="spin"/>:<Send size={15}/>}Опубликовать</button></>}
     {i.status==="review"&&<button className="btn small" disabled={!!busy} onClick={onReject}><X size={15}/>Отклонить</button>}
+    <a className="text-btn" href={`/api/media/${i.media_id}?download=1`}>Скачать MP4</a>
     {i.project_id&&<button className="text-btn" onClick={onOpen}>Открыть в студии · AI-ведущий<ArrowRight size={14}/></button>}</div>}
   </div></div>;
 }
