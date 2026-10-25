@@ -77,7 +77,8 @@ export default function NewsRadar({onOpenProject,onSettings,onError,notify}:{onO
    <button className="btn primary" disabled={!!busy||!src.consent||!/^https:\/\//.test(src.url)||!state.deepseekConfigured} onClick={()=>void act("source",{action:"source",consent:true,source:{url:src.url,facts:src.facts,photoId:src.photoId}},"Сценарии созданы, ролики отправлены на монтаж").then(r=>{if(r)setSrc({url:"",facts:"",photoId:null,photoName:"",consent:false})})}>{busy==="source"?<Loader2 size={17} className="spin"/>:<Clapperboard size={17}/>}Сделать выпуск</button>
   </div></section>
 
-  <section className="panel"><div className="panel-heading"><h2><Clapperboard size={17}/>Ролики</h2><small>{s.mode==="auto"?"Публикуются сразу после монтажа":"Публикуются после вашей проверки"}</small></div>
+  <section className="panel"><div className="panel-heading"><h2><Clapperboard size={17}/>Ролики</h2><div className="radar-actions"><small>{s.mode==="auto"?"Новые — сразу после монтажа и проверки":"Публикуются после вашей проверки"}</small>
+    {review.some(i=>i.status==="review"&&i.media_id&&i.document.check?.ok)&&<button className="btn primary small" disabled={!!busy} onClick={()=>void act("ready",{action:"publishReady"}).then(r=>r&&notify(`Опубликовано: ${r.published}. С замечаниями, ждут вас: ${r.skipped}.`))}>{busy==="ready"?<Loader2 size={15} className="spin"/>:<Send size={15}/>}Опубликовать все проверенные</button>}</div></div>
    {review.length?<div className="radar-videos">{review.map(i=><ItemCard key={i.id} item={i} channels={state.channels} busy={busy} onOpen={()=>i.project_id&&onOpenProject(i.project_id)}
      onPublish={c=>void act(`pub-${i.id}`,{action:"publish",itemId:i.id,channels:c})} onReject={()=>void act(`rej-${i.id}`,{action:"reject",itemId:i.id},"Ролик отклонён")}/>)}</div>
    :<p className="radar-empty">Готовых роликов пока нет.</p>}

@@ -2,7 +2,7 @@ import {z} from "zod";
 import {identity,db,json,errorResponse,AppError} from "@/lib/server";
 import {deepseekConfigured} from "@/lib/deepseek";
 import {collectArticles,lastCollected,verifiedStories} from "@/lib/radar";
-import {autopilotSettings,saveAutopilotSettings,draftStory,draftFromSource,sourceSchema,freshStories,radarItems,publishItem,rejectItem,storiesToday} from "@/lib/autopilot";
+import {autopilotSettings,saveAutopilotSettings,draftStory,draftFromSource,sourceSchema,freshStories,radarItems,publishItem,publishReady,rejectItem,storiesToday} from "@/lib/autopilot";
 import {channelStatus,connectTelegram,disconnectChannel} from "@/lib/channels";
 export async function GET(){try{
  const u=await identity();
@@ -17,6 +17,7 @@ const action=z.discriminatedUnion("action",[
  z.object({action:z.literal("source"),source:sourceSchema,consent:z.literal(true,{errorMap:()=>({message:"Подтвердите платный запрос DeepSeek."})})}),
  z.object({action:z.literal("publish"),itemId:z.string().uuid(),channels:z.array(z.enum(["telegram","youtube"])).min(1,"Выберите площадку.").max(2)}),
  z.object({action:z.literal("reject"),itemId:z.string().uuid()}),
+ z.object({action:z.literal("publishReady")}),
  z.object({action:z.literal("telegram"),token:z.string().trim().max(120),chat:z.string().trim().min(2).max(200)}),
  z.object({action:z.literal("disconnect"),channel:z.enum(["telegram","youtube"])}),
 ]);
@@ -27,6 +28,7 @@ export async function POST(req:Request){try{
  if(b.action==="draft"){const story=(await verifiedStories()).find(s=>s.key===b.storyKey);if(!story)throw new AppError("История больше не в окне радара. Обновите список.",404);return json(await draftStory(u.userId,story,{...await autopilotSettings(u.userId)}));}
  if(b.action==="source")return json(await draftFromSource(u.userId,b.source,await autopilotSettings(u.userId)));
  if(b.action==="publish")return json(await publishItem(u.userId,b.itemId,b.channels));
+ if(b.action==="publishReady")return json(await publishReady(u.userId));
  if(b.action==="reject"){await rejectItem(u.userId,b.itemId);return json({ok:true});}
  if(b.action==="telegram")return json(await connectTelegram(u.userId,b.token,b.chat));
  await disconnectChannel(u.userId,b.channel);return json({ok:true});

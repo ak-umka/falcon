@@ -284,6 +284,19 @@ export async function publishItem(owner: string, id: string, channels: ChannelId
     .bind(status, JSON.stringify(merged), results.filter(r => r.error).map(r => r.error).join(" ") || null, now(), id).run();
   return { status, result: merged };
 }
+/** Публикует все ожидающие ролики, прошедшие автопроверку, на площадки из настроек. Ролики с замечаниями не трогает. */
+export async function publishReady(owner: string) {
+  const settings = await autopilotSettings(owner), connected = await channelStatus(owner);
+  const rows = await db().prepare("SELECT id,language,document FROM radar_items WHERE owner_id=? AND status='review' AND media_id IS NOT NULL ORDER BY created_at").bind(owner).all<{ id: string; language: RadarLanguage; document: string }>();
+  const published: string[] = [], skipped: string[] = [];
+  for (const row of rows.results) {
+    const check = itemDocument.parse(JSON.parse(row.document)).check;
+    const channels = settings.channels.filter(c => connected[c] && (c !== "youtube" || settings.youtubeLanguages.includes(row.language)));
+    if (!check?.ok || !channels.length) { skipped.push(row.id); continue; }
+    await publishItem(owner, row.id, channels); published.push(row.id);
+  }
+  return { published: published.length, skipped: skipped.length };
+}
 export async function rejectItem(owner: string, id: string) {
   const r = await db().prepare("UPDATE radar_items SET status='rejected',updated_at=? WHERE id=? AND owner_id=? AND status IN ('review','failed','rendering')").bind(now(), id, owner).run();
   if (!r.meta.changes) throw new AppError("Ролик нельзя отклонить в текущем состоянии.", 409);
