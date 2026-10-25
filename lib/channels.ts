@@ -97,6 +97,20 @@ export async function completeYoutube(owner: string, origin: string, code: strin
   await saveChannel(owner, "youtube", { refreshToken: t.refresh_token }, { name });
   return name as string;
 }
+// Причины отказа YouTube Data API — понятным языком; остальное — как ответил Google.
+const YOUTUBE_REASONS: Record<string, string> = {
+  uploadLimitExceeded: "достигнут дневной лимит загрузок для этого канала (ограничение YouTube, не API). Попробуйте через 24 часа.",
+  quotaExceeded: "исчерпана суточная квота YouTube Data API проекта Google. Сбрасывается в полночь по тихоокеанскому времени.",
+  dailyLimitExceeded: "исчерпана суточная квота YouTube Data API проекта Google.",
+  invalidTitle: "YouTube не принял название ролика.",
+  invalidDescription: "YouTube не принял описание ролика.",
+  youtubeSignupRequired: "у аккаунта Google нет YouTube-канала.",
+  forbidden: "нет прав на загрузку — переподключите YouTube.",
+};
+function youtubeError(status: number, body: any) {
+  const e = body?.error, reason: string | undefined = e?.errors?.[0]?.reason;
+  return (reason && YOUTUBE_REASONS[reason]) || `HTTP ${status}${reason ? ` (${reason})` : ""}${e?.message ? `: ${String(e.message).slice(0, 200)}` : ""}`;
+}
 async function publishYoutube(owner: string, mediaId: string, title: string, description: string, language: string) {
   const secret = await channelSecret(owner, "youtube"); if (!secret) throw new AppError("YouTube не подключён.");
   const { access_token } = await googleToken({ refresh_token: secret.refreshToken, grant_type: "refresh_token" });
@@ -108,12 +122,12 @@ async function publishYoutube(owner: string, mediaId: string, title: string, des
       status: { privacyStatus: "public", selfDeclaredMadeForKids: false, containsSyntheticMedia: true } }),
   });
   const location = init.headers.get("location");
-  if (!init.ok || !location) throw new AppError(`YouTube: не удалось начать загрузку (HTTP ${init.status}). Проверьте квоту и доступ.`, 502, "provider_error");
+  if (!init.ok || !location) throw new AppError(`YouTube: ${youtubeError(init.status, await init.json().catch(() => null))}`, 502, "provider_error");
   let put: Response;
   try { put = await fetch(location, { method: "PUT", headers: { "Content-Type": m.mime }, body: await file.arrayBuffer(), signal: AbortSignal.timeout(300000) }); }
   catch { throw new AppError("YouTube: загрузка не подтверждена. Проверьте YouTube Studio перед повтором.", 502, "unconfirmed"); }
   const d: any = await put.json().catch(() => ({}));
-  if (!put.ok || !d.id) throw new AppError(`YouTube: HTTP ${put.status}. Проверьте YouTube Studio перед повтором.`, 502, "unconfirmed");
+  if (!put.ok || !d.id) throw new AppError(`YouTube: ${youtubeError(put.status, d)} Проверьте YouTube Studio перед повтором.`, 502, "unconfirmed");
   return `https://youtube.com/shorts/${d.id}`;
 }
 
