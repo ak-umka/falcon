@@ -76,15 +76,26 @@ export async function storyKey(url: string) {
 /** Склеивает статьи разных изданий о одном событии. Верифицированы истории минимум из `minSources` изданий. */
 export async function clusterStories(articles: RadarArticle[], { similarity = 0.28, minSources = 2, now = Date.now() } = {}): Promise<RadarStory[]> {
   const vecs = vectors(articles.map(a => [...tokens(a.title), ...tokens(a.title), ...tokens(a.summary)]));
-  const parent = articles.map((_, i) => i);
-  const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
-  for (let i = 0; i < articles.length; i++) for (let j = i + 1; j < articles.length; j++)
-    if (articles[i].source !== articles[j].source && cosine(vecs[i], vecs[j]) >= similarity) parent[find(i)] = find(j);
-  const groups = new Map<number, number[]>();
-  articles.forEach((_, i) => { const r = find(i); groups.set(r, [...(groups.get(r) || []), i]); });
+  // Склейка по центру истории: статья присоединяется, только если похожа на историю в целом.
+  // Попарная склейка «цепочкой» объединяла разные события (A≈B, B≈C ⇒ A, C вместе).
+  const order = articles.map((_, i) => i).sort((x, y) => articles[x].publishedAt.localeCompare(articles[y].publishedAt));
+  const clusters: { idx: number[]; sum: Vector; sources: Set<string> }[] = [];
+  for (const i of order) {
+    let best = -1, bestSim = similarity;
+    clusters.forEach((c, k) => {
+      let norm = 0; for (const w of c.sum.values()) norm += w * w;
+      const sim = cosine(vecs[i], c.sum) / (Math.sqrt(norm) || 1);
+      if (sim >= bestSim) { best = k; bestSim = sim; }
+    });
+    if (best < 0) { clusters.push({ idx: [i], sum: new Map(vecs[i]), sources: new Set([articles[i].source]) }); continue; }
+    const c = clusters[best];
+    c.idx.push(i); c.sources.add(articles[i].source);
+    for (const [t, w] of vecs[i]) c.sum.set(t, (c.sum.get(t) || 0) + w);
+  }
+  const groups = clusters.map(c => c.idx);
 
   const stories: RadarStory[] = [];
-  for (const idx of groups.values()) {
+  for (const idx of groups) {
     const members = idx.map(i => articles[i]), sources = [...new Set(members.map(a => a.source))].sort();
     if (sources.length < minSources) continue;
     const centrality = (i: number) => idx.reduce((s, j) => j === i ? s : s + cosine(vecs[i], vecs[j]), 0);
